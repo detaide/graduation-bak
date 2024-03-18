@@ -30,23 +30,24 @@ export default class PrismaManager
         callback : (prisma : PrismaType) => Promise<any>
     )
     {
+        let callbackRet = null;
         return PrismaManager.getPrisma().$transaction( async () =>
         {
             console.log("translation start")
-            return await callback.bind(null, PrismaManager.getPrisma())()
+            callbackRet =  await callback.bind(null, PrismaManager.getPrisma())();
+            return Promise.resolve(callbackRet);
         })
-        .then(() =>
-        {
-            return true;
-        })
-        .catch((err) =>
-        {
-            console.log("translation error : ", err);
-            return false;
-        })
+        // .catch((err : Error) =>
+        // {
+        //     console.log("translation error : ", err);
+        //     callbackRet = err.message;
+        //     console.log(callbackRet);
+        //     return callbackRet;
+        // })
         .finally(() =>
         {
             console.log("translation end")
+            return callbackRet;
         })
     }
 

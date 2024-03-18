@@ -20,6 +20,41 @@ export async function saveImage(Files : Express.Multer.File[])
 
 }
 
+export async function saveBase64Iamge(base64String : string, fileRegex : string = 'png') {
+    let fileName = uuidGenerate() + '.' + fileRegex;
+
+    let subUUIDList = fileName.split("-");
+
+    await fs.access(tempDir, fs.constants.F_OK, async (err) =>
+    {
+        if(err)
+            await fs.mkdirSync(tempDir);
+
+            let parentDir = tempDir + '\\' + (subUUIDList.length ? subUUIDList[0] : image_not_uuid_path);
+            await fs.access(parentDir, fs.constants.F_OK, async (err) =>
+            {
+                if(err)
+                    await fs.mkdirSync(parentDir);
+        
+                let absoluteName = parentDir + '\\' + fileName;
+                console.log(`[File Upload] ${absoluteName}`);
+                base64String = base64String.replace(/^data:image\/\w+;base64,/, '');
+                const binaryData = Buffer.from(base64String, 'base64');
+                await fs.writeFile(absoluteName, binaryData, (err) =>
+                {
+                    if(err)
+                    {
+                        console.log(err);
+                        throw new Error("fs write error");
+                    }
+
+                })
+        })
+    })
+
+    return fileName;
+}
+
 export async function saveImageToDir(file : Express.Multer.File,  fileName? : string) {
 
     // let tempDir = path.resolve(__dirname, "../../../image_temp");

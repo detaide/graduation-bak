@@ -13,8 +13,80 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Login {
   id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  username String
+  password String
+  registerTime Int?
+  loginTime Int?
+}
+
+model Space {
+  id Int @id @default(autoincrement())
+  userId Int
+  type  Int
+  title String
+  info String
+  scanNumber Int
+  publishTime Int
+}
+
+model UserDetail {
+  id Int @id
+  userId Int
+  nickname String
+  avatarURL String
+  description String
+  firstName String
+  lastName String
+  gender Int
+  school String
+  birthday Int
+  email String
+  address String
+}
+
+model SpaceComment{
+  id Int @id
+  userId Int
+  spaceId Int
+  comment String
+  publishTime Int
+  thumbs Int?
+}
+
+model Channel{
+  id Int @id
+  name String
+  type Int
+  ownerId Int
+  memo String
+  scanNumber Int
+  imgURL String
+  createTime Int
+}
+
+model ChannelItems{
+  id Int @id
+  channelId Int
+  ownerId Int
+  publishTime Int
+  title String
+  info String
+}
+
+model ChannelItemComment{
+  id Int @id
+  channelItemId Int
+  userId Int
+  comment String
+  publishTime Int
+  thumbs Int?
+}
+
+model ChannelFollow{
+  id Int @id
+  userId Int
+  channelId Int
+  followTime Int
 }
