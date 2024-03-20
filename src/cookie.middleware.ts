@@ -7,7 +7,7 @@ export class CookieMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     console.log('Cookies:', req.cookies); // 获取请求携带的所有 Cookie
     try{
-        if(m_crypto.cookieExipred(req.cookies.token, req.query.userId as unknown as number))
+        if(m_crypto.cookieExipred(req.cookies.token, req.query.user_id as unknown as number))
         {
             res.status(401).send("Cookie Expired");
             return;

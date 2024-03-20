@@ -12,16 +12,25 @@ export class SpaceController {
     publish(@Body() publishInfo : PublishInfoType, @Req() req : Request)
     {
         // console.log(publishInfo);
-        console.log(req.query.userId);
-        publishInfo.userId = parseInt(req.query.userId as string);
+        publishInfo.userId = parseInt(req.query.user_id as string);
         return this.spaceService.publish(publishInfo);
     }
 
     @Get('all_space')
-    bringAllSpace()
+    bringAllSpace(@Req() req : Request)
     {
-        return this.spaceService.bringAllSpace();
+        const type = req.query.type as string;
+        return this.spaceService.bringAllSpace(+type);
     }
+
+    @Get("space_info_by_user_id")
+    bringAllSpaceByUserId(@Req() req : Request)
+    {
+        const userId = req.query.user_id as string;
+        return this.spaceService.bringAllSpaceByUserId(+userId);
+    }
+    
+
 
     @Get('space_detail')
     async bringSpaceDetail(@Req() req : Request)
@@ -36,7 +45,7 @@ export class SpaceController {
     @Post('publish_comment')
     async pubishComment(@Req() req : Request, @Body() body : PublishCommentType)
     {
-        body.userId = parseInt(req.query.userId as string);
+        body.userId = parseInt(req.query.user_id as string);
         return this.spaceService.publishComment(body);
     }
 
@@ -59,6 +68,12 @@ export class SpaceController {
     {
         let spaceId = +body.spaceId;
         return this.spaceService.addThumbsbyId(spaceId);
+    }
+
+    @Get('space_type')
+    async getSpaceType()
+    {
+        return this.spaceService.getSpaceType();
     }
 }
  

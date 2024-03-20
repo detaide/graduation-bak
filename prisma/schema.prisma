@@ -72,7 +72,8 @@ model ChannelItems{
   ownerId Int
   publishTime Int
   title String
-  info String
+  comment String
+  imgURL Json @db.JsonB
 }
 
 model ChannelItemComment{
@@ -88,5 +89,12 @@ model ChannelFollow{
   id Int @id
   userId Int
   channelId Int
+  followTime Int
+}
+
+model UserFollow{
+  id Int @id
+  followerId Int
+  followedId Int
   followTime Int
 }

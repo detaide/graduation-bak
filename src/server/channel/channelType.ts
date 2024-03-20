@@ -44,4 +44,20 @@ export class ChannelType {
             410 : '科幻',
         }
     }
+
+    public static getChannelName(type : number)
+    {
+        let channelType = ChannelType.channelType;
+        for(let key in channelType)
+        {
+            let typeObj = channelType[key];
+            for(let typeKey in typeObj)
+            {
+                if(+typeKey === type)
+                {
+                    return typeObj[typeKey];
+                }
+            }
+        }
+    }
 }

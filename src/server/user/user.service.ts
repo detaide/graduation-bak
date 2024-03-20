@@ -114,6 +114,8 @@ export class UserService {
                 id : userDetail?.id || general.generateId()
             }
 
+            console.log(detailObj)
+
             if(!userDetail)
             {
                 await prisma.userDetail.create({
@@ -163,7 +165,102 @@ export class UserService {
             }
         });
 
-        return userDetail;
+        let followObj = await this.getFollowerNumber(userId);
+        let retUserDetail = {
+            ...userDetail,
+            ...followObj
+        }
+
+        return retUserDetail;
+    }
+
+    async userFollow(followedId : number, followerId : number)
+    {
+        let followRecord = await PrismaManager.getPrisma().userFollow.findFirst({
+            where : {
+                followedId,
+                followerId
+            }
+        })
+
+        if(followRecord)
+        {
+            return "Already Followed";
+        }
+
+        await PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.userFollow.create({
+                data : {
+                    id : general.generateId(),
+                    followedId,
+                    followerId,
+                    followTime : general.time()
+                }
+            })
+        })
+        
+        return "follow success";
+    }
+
+    async userFollowCancel(followedId : number, followerId : number)
+    {
+        let followRecord = await PrismaManager.getPrisma().userFollow.findFirst({
+            where : {
+                followedId,
+                followerId
+            }
+        })
+
+        if(!followRecord)
+        {
+            return "followed relation does not exists";
+        }
+
+        return PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.userFollow.delete({
+                where : {
+                    id : followRecord.id
+                }
+            })
+
+            return "cancel follow relation success"
+        })
+
+        
+    }
+
+    async getFollowStatus(followedId : number, followerId : number)
+    {
+        let followRecord = await PrismaManager.getPrisma().userFollow.findFirst({
+            where : {
+                followedId,
+                followerId
+            }
+        })
+
+        return followRecord ? true : false;
+    }
+
+    /**
+     * 关注/粉丝数量
+     */
+    async getFollowerNumber(userId : number)
+    {
+        // 粉丝
+        let sql = `SELECT count("followedId") as "followerNumber" FROM "Community"."UserFollow"
+        WHERE "followedId" = ${userId}
+        `
+
+        let sql2 = `
+            SELECT count("followerId") as "followedNumber" FROM "Community"."UserFollow"
+            WHERE "followerId" = ${userId}
+        `
+
+        let {followerNumber} = await PrismaManager.QueryFirst(sql);
+        let {followedNumber} = await PrismaManager.QueryFirst(sql2);
+        return {followerNumber, followedNumber};
     }
 }
 

@@ -28,7 +28,7 @@ export class UserController {
         {
             throw new Error("[Register Error] parameter is empty");
         }
-
+        console.log(body);
         let userRet = await this.loginService.checkLogin(body);
         let userDetail = await this.loginService.bringUserDetail(userRet.id);
         return {
@@ -41,26 +41,56 @@ export class UserController {
     userMessageSubmit(@Body() body : any, @Req() req : any)
     {
         console.log(body)
-        return this.loginService.userMessageSubmit(+req.query.userId, body);
+        return this.loginService.userMessageSubmit(+req.query.user_id, body);
     }
 
     @Get("user_detail")
     async userDetail(@Req() req : Request)
     {
         let cookie = req.cookies;
-        let userId = req.query.userId;
+        let user_id = req.query.user_id;
         let isSelf = false;
 
-        try{
-            let decryptedToken =  JSON.parse(m_crypto.decryptEncryptedCookie(cookie.token));
-            isSelf = decryptedToken.id === userId;
-        }catch(err)
-        {
-            console.log(err);
-            isSelf = false;
-        }
+        // try{
+        //     let decryptedToken =  JSON.parse(m_crypto.decryptEncryptedCookie(cookie.token));
+        //     isSelf = decryptedToken.id === userId;
+        // }catch(err)
+        // {
+        //     console.log(err);
+        //     isSelf = false;
+        // }
+        let userInfo = await this.loginService.userDetail(+(user_id as string), isSelf);
+        console.log(userInfo)
+        return userInfo;
+    }
 
-        return await this.loginService.userDetail(+(userId as string), isSelf);
+    @Post("user_follow")
+    async userFollow(@Req() req : Request, @Body() body : {followedId : number})
+    {
+        let userId = req.query.user_id;
+        if(!userId)
+            throw new Error("No User Id Provided");
+        return this.loginService.userFollow(+body.followedId, +userId);
+    }
+
+    @Post("user_follow_cancel")
+    async userFollowCancel(@Req() req : Request, @Body() body : {followedId : number})
+    {
+        let userId = req.query.user_id;
+        if(!userId)
+            throw new Error("No User Id Provided");
+        return this.loginService.userFollowCancel(+body.followedId, +userId);
+    }
+
+    @Get('follow_status')
+    async getFollowStatus(@Req() req : Request)
+    {
+        let followerId = req.query.follower_id as string;
+        let followedId = req.query.followed_id as string;
+        if(!followedId || !followerId)
+            throw new Error("No Query Params")
+
+        return this.loginService.getFollowStatus(+followedId, +followerId);
     }
 
 }

@@ -2,12 +2,14 @@ import PrismaManager from '@/prisma';
 import { Injectable } from '@nestjs/common';
 import * as general from "@/utils/general"
 import { Prisma } from '@prisma/client';
+import { SpaceType } from './spaceType';
 
 @Injectable()
 export class SpaceService {
 
     async publish(publishInfo : PublishInfoType)
     {
+        console.log(publishInfo)
         return await PrismaManager.transaction(async (prisma) =>
         {
             let currentTime = general.time();
@@ -19,7 +21,7 @@ export class SpaceService {
                     publishTime : currentTime,
                     scanNumber : 0,
                     userId : publishInfo.userId,
-                    type : publishInfo.type
+                    type : +publishInfo.type
                 }
             });
             
@@ -27,13 +29,21 @@ export class SpaceService {
         })
     }
 
-    async bringAllSpace()
+    async bringAllSpace(type? : number)
     {
+        let whereCondition = {};
+        if(type && Object.keys(SpaceType.spaceType).includes(type.toString()))
+        {
+            whereCondition = {
+                type
+            }
+        }
+
         return PrismaManager.getPrisma().space.findMany(
             {
+                where : whereCondition,
                 orderBy : {
                     publishTime : 'desc'
-                
                 }
             }
         );
@@ -41,11 +51,17 @@ export class SpaceService {
 
     async bringSpaceDetail(space_id : number)
     {
-        return await PrismaManager.getPrisma().space.findFirst({
+        
+        let spaceInfo = await PrismaManager.getPrisma().space.findFirst({
             where : {
                 id : space_id
             }
         });
+        let spaceType = SpaceType.getSpaceTypeName(spaceInfo.type);
+        return {
+            typeName : spaceType,
+            ...spaceInfo
+        }
     }
 
     async publishComment(body : PublishCommentType)
@@ -87,7 +103,7 @@ export class SpaceService {
         let sql = `SELECT pc.*, ud."nickname", ud."avatarURL" from "Community"."SpaceComment" as pc
         LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = pc."userId"
         WHERE pc."id" = ${id} ORDER BY pc."publishTime" DESC LIMIT 1
-        `
+        `;
         
         let info = await PrismaManager.QueryFirst(sql);
         return info;
@@ -118,6 +134,20 @@ export class SpaceService {
             }
         });
     
+    }
+
+    async getSpaceType()
+    {
+        return SpaceType.spaceType;
+    }
+
+    async bringAllSpaceByUserId(userId : number)
+    {
+        return await PrismaManager.getPrisma().space.findMany({
+            where : {
+                userId : userId
+            }
+        })
     }
 
 }

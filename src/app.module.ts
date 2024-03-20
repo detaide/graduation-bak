@@ -7,7 +7,7 @@ import { CookieMiddleware } from './cookie.middleware';
 export class AppModule implements NestModule
 {
     configure(consumer: MiddlewareConsumer) {
-        consumer.apply(CookieMiddleware).forRoutes("space");
+        // consumer.apply(CookieMiddleware).forRoutes("space");
     }
 
 

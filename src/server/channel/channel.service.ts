@@ -50,16 +50,32 @@ export class ChannelService {
     }
 
     async createChannelItem(channelItemInfo: ChannelItemReq) {
+
+        let imgURLMap = {};
+
+        if(channelItemInfo.imgFileList)
+        {
+            channelItemInfo.imgFileList.forEach(async (imgFile, index) =>
+            {
+                let imageFile = await saveBase64Iamge(imgFile);
+                imgURLMap[index] = imageFile;
+            })
+        }
+
+
         return await PrismaManager.transaction(async (prisma) =>
         {
+
+
             await prisma.channelItems.create({
                 data : {
                     id : general.generateId(),
-                    channelId : channelItemInfo.channelId,
+                    channelId : +channelItemInfo.channelId,
                     title : channelItemInfo.title,
-                    info : channelItemInfo.info,
+                    comment : channelItemInfo.comment,
                     publishTime : general.time(),
-                    ownerId : channelItemInfo.userId as number
+                    ownerId : +channelItemInfo.userId as number,
+                    imgURL : JSON.stringify(imgURLMap)
                 }
             });
 
@@ -68,26 +84,39 @@ export class ChannelService {
     }
 
     async bringChannelItemInfo(channelId: number) {
-        return await PrismaManager.getPrisma().channelItems.findMany({
-            where : {
-                channelId : channelId
-            },
-            orderBy : {
-                publishTime : 'desc'
-            }
-        });
+        let sql = `
+        SELECT ci.*, ud."nickname", ud."avatarURL", cic."commentNumber" FROM "Community"."ChannelItems" as ci
+        LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ci."ownerId"
+        left join (
+            select "channelItemId", count("channelItemId") as "commentNumber" from "Community"."ChannelItemComment"
+            group by "channelItemId"
+        ) as cic on cic."channelItemId" = ci."id"
+            WHERE "channelId" = ${channelId} ORDER BY "publishTime" DESC
+        `
+        return PrismaManager.execute(sql);
+
+        // return await PrismaManager.getPrisma().channelItems.findMany({
+        //     where : {
+        //         channelId : channelId
+        //     },
+        //     orderBy : {
+        //         publishTime : 'desc'
+        //     }
+        // });
     }
 
     async createChannelItemComment(channelItemCommentInfo: ChannelItemCommentReq) {
+        console.log("channelItemCommentInfo" ,channelItemCommentInfo)
         return await PrismaManager.transaction(async (prisma) =>
         {
             await prisma.channelItemComment.create({
                 data : {
                     id : general.generateId(),
-                    channelItemId : channelItemCommentInfo.channleItemId,
+                    channelItemId : channelItemCommentInfo.channelItemId,
                     comment : channelItemCommentInfo.comment,
                     publishTime : general.time(),
-                    userId : channelItemCommentInfo.userId as number
+                    userId : channelItemCommentInfo.userId as number,
+                    thumbs : 0
                 }
             });
 
@@ -143,6 +172,129 @@ export class ChannelService {
 
         return PrismaManager.execute(sql);
     }
+
+    async bringChannelDetailByName(channelName: string) {
+        let sql = `
+        select ch.*, ud."nickname", ud."avatarURL", cf."follow", ci."itemNumber" from "Community"."Channel" as ch
+        LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ch."ownerId"
+        left join (
+        select "channelId", count("channelId") as "follow" from "Community"."ChannelFollow"
+        group by "channelId"
+        ) as cf on cf."channelId" = ch."id"
+        left join (
+        select "channelId", count("channelId") as "itemNumber" from "Community"."ChannelItems"
+        group by "channelId"
+        ) as ci on ci."channelId" = ch."id"
+        WHERE ch."name" = '${channelName}'
+        order by ch."createTime" DESC
+        `
+
+        let channelData = await PrismaManager.QueryFirst(sql);
+        channelData.typeName = ChannelType.getChannelName(channelData.type);
+        return channelData;
+    }
+
+    async bringChannelItemDetail(channelItemId: number) {
+        let sql = `
+                select ci.*, ch."name", ch."type", ch."imgURL"  as "channelImg", ch."memo", ch."ownerId" as "channelOwnerId", 
+                ud."nickname", ud."userId", ud."avatarURL"
+            from "Community"."ChannelItems" as ci
+                        LEFT JOIN "Community"."Channel" as ch on ch."id" = ci."channelId"
+                        LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ci."ownerId"
+            WHERE ci."id" = ${channelItemId}
+        `
+
+        let channelItemData = await PrismaManager.QueryFirst(sql);
+        channelItemData.typeName = ChannelType.getChannelName(channelItemData.type);
+
+        let sql2 = `
+            select cic.*, ud."nickname", ud."avatarURL", ci."ownerId" as "commentOwnerId"  from "Community"."ChannelItemComment" as cic
+            left join "Community"."UserDetail" as ud on ud."userId" = cic."userId"
+            left join "Community"."ChannelItems" as ci on ci."id" = cic."channelItemId"
+            where cic."channelItemId" = ${channelItemId}
+            order by cic."publishTime" ASC
+        `
+
+        let subCommentItemData = await PrismaManager.execute(sql2);
+        channelItemData.subCommentItemData = subCommentItemData;
+
+        return channelItemData;
+    }
+
+    async addChannelScanNumber(channelId: number) {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            let channel = await prisma.channel.findFirst({
+                where : {
+                    id : channelId
+                }
+            });
+
+            if(!channel)
+                throw new Error("Channel Not Found");
+
+            await prisma.channel.update({
+                data : {
+                    scanNumber : channel.scanNumber + 1
+                },
+                where : {
+                    id : channelId
+                }
+            })
+        })
+    }
+
+    async bringChannelItemByUserId(userId: number) {
+        let sql = `
+            select ci.*, ch."name", ch."type", ch."imgURL"  as "channelImg", ch."memo", ch."ownerId" as "channelOwnerId", 
+            ud."nickname", ud."userId", ud."avatarURL"
+        from "Community"."ChannelItems" as ci
+                    LEFT JOIN "Community"."Channel" as ch on ch."id" = ci."channelId"
+                    LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ci."ownerId"
+        WHERE ci."ownerId" = ${userId}
+        order by ci."publishTime" DESC
+        `
+
+        return PrismaManager.execute(sql);
+    }
+
+    async bringAllChannelItem()
+    {
+        let sql = `
+        select ci.*, ch."name", ch."type", ch."imgURL"  as "channelImg", ch."memo", ch."ownerId" as "channelOwnerId", 
+            ud."nickname", ud."userId", ud."avatarURL"
+        from "Community"."ChannelItems" as ci
+                    LEFT JOIN "Community"."Channel" as ch on ch."id" = ci."channelId"
+                    LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ci."ownerId"
+        order by ci."publishTime" DESC
+        `
+
+        return PrismaManager.execute(sql);
+    
+    }
+
+    async bringAllChannel()
+    {
+        let sql = `
+        select *, cf."follow", ci."itemNumber" from "Community"."Channel" as ch
+        left join (
+            select "channelId", count("channelId") as "follow" from "Community"."ChannelFollow"
+            group by "channelId"
+        ) as cf on cf."channelId" = ch."id"
+        left join (
+            select "channelId", count("channelId") as "itemNumber" from "Community"."ChannelItems"
+            group by "channelId"
+        ) as ci on ci."channelId" = ch."id"
+        order by "createTime" DESC
+        `
+
+        return PrismaManager.execute(sql);
+    }
+
+    async followChannel(userId: number, channelId: number) {
+        return await this.channelFollow(userId, +channelId);
+    }
+
 }
 
 
@@ -160,13 +312,15 @@ export interface ChannelItemReq
 {
     channelId : number,
     title : string,
-    info  : string,
+    comment  : string,
     userId? : number,
+    imgURLList? : string[],
+    imgFileList? : string[]
 }
 
 export interface ChannelItemCommentReq
 {
-    channleItemId : number,
+    channelItemId : number,
     comment : string,
     userId? : number
 }
