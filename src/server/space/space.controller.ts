@@ -12,7 +12,12 @@ export class SpaceController {
     publish(@Body() publishInfo : PublishInfoType, @Req() req : Request)
     {
         // console.log(publishInfo);
-        publishInfo.userId = parseInt(req.query.user_id as string);
+        let userId = parseInt(req.query.user_id as string);
+        if(!userId)
+        {
+            throw new Error("user_id is empty");
+        }
+        publishInfo.userId = userId;
         return this.spaceService.publish(publishInfo);
     }
 
@@ -20,6 +25,7 @@ export class SpaceController {
     bringAllSpace(@Req() req : Request)
     {
         const type = req.query.type as string;
+        console.log("type",type);
         return this.spaceService.bringAllSpace(+type);
     }
 
@@ -27,16 +33,31 @@ export class SpaceController {
     bringAllSpaceByUserId(@Req() req : Request)
     {
         const userId = req.query.user_id as string;
-        return this.spaceService.bringAllSpaceByUserId(+userId);
+        return this.spaceService.bringAllSpace(null, +userId);
     }
     
+
+    @Get('space_by_follow')
+    bringSpaceByFollow(@Req() req : Request)
+    {
+        const userId = req.query.user_id as string;
+        if(!userId)
+        {
+            throw new Error("user_id is empty");
+        }
+        return this.spaceService.bringSpaceByFollow(+userId);
+    }
 
 
     @Get('space_detail')
     async bringSpaceDetail(@Req() req : Request)
     {
-        console.log(req.query.space_id)
-        let ret = await this.spaceService.bringSpaceDetail(+req.query.space_id);
+        let spaceId = req.query.space_id;
+        if(!spaceId)
+        {
+            throw new Error("user_id is empty");
+        }
+        let ret = await this.spaceService.bringSpaceDetail(+spaceId);
         return {
             article : ret
         }
@@ -74,6 +95,43 @@ export class SpaceController {
     async getSpaceType()
     {
         return this.spaceService.getSpaceType();
+    }
+
+    @Get('search_space')
+    async SpaceSearch(@Req() req : Request)
+    {
+        let keyword = req.query.keyword as string;
+        if(!keyword)
+        {
+            throw new Error("keyword is empty");
+        }
+        return this.spaceService.SpaceSearch(keyword);
+    }
+
+    @Get('space_general')
+    async getSpaceGeneral(@Req() req : Request)
+    {
+        let spaceId = +req.query.space_id;
+        let userId = +req.query.user_id;
+        if(!spaceId || !userId)
+            throw new Error("No Space Id or User Id Provided");
+        console.log(userId, spaceId)
+        return await this.spaceService.getSpaceGeneral(spaceId, userId);
+    }
+
+    @Post('space_follow')
+    async spaceFollow(@Req() req : Request, @Body() body : {spaceId : number, userId : number, type : "Star" | "Like", followStatus : "Add" | "Cancel"})
+    {
+        console.log(body)
+        let userId = +req.query.user_id;
+        if(!body.followStatus || !body.spaceId || !body.type)
+        {
+            throw new Error("No Space Id or Follow Type Provided");
+        
+        }
+        if(!userId)
+            throw new Error("No User Id Provided");
+        return this.spaceService.spaceFollow(userId, +body.spaceId, body.type, body.followStatus);
     }
 }
  

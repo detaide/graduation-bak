@@ -83,7 +83,7 @@ export class ChannelService {
         })
     }
 
-    async bringChannelItemInfo(channelId: number) {
+    async bringChannelItemInfo(channelId: number, keywords? : string) {
         let sql = `
         SELECT ci.*, ud."nickname", ud."avatarURL", cic."commentNumber" FROM "Community"."ChannelItems" as ci
         LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ci."ownerId"
@@ -91,7 +91,9 @@ export class ChannelService {
             select "channelItemId", count("channelItemId") as "commentNumber" from "Community"."ChannelItemComment"
             group by "channelItemId"
         ) as cic on cic."channelItemId" = ci."id"
-            WHERE "channelId" = ${channelId} ORDER BY "publishTime" DESC
+            WHERE "channelId" = ${channelId} ${keywords ? `and
+            ((ci."title" ILIKE '%${keywords}%') or (ci."comment" ILIKE '%${keywords}%'))` : ''}
+            ORDER BY "publishTime" DESC
         `
         return PrismaManager.execute(sql);
 
@@ -128,7 +130,14 @@ export class ChannelService {
         return ChannelType.channelType;
     }
 
-    async channelFollow(userId: number, channelId: number) {
+    /**
+     * 
+     * @param userId 
+     * @param channelId 
+     * @param type 1 follow | 2 unfollow
+     * @returns 
+     */
+    async channelFollow(userId: number, channelId: number, type? : number) {
         return await PrismaManager.transaction(async (prisma) =>
         {
             let follow = await prisma.channelFollow.findFirst({
@@ -137,21 +146,21 @@ export class ChannelService {
                     channelId : channelId
                 }
             });
-
-            if(follow)
+            console.log(follow, type, userId, channelId)
+            if(follow && type === 2)
             {
-               await prisma.channelFollow.update({
-                    data : {
-                        followTime : general.time()
-                    },
-                    where : {
-                        id : follow.id
-                    }
-               })
-               return;
+               await prisma.channelFollow.delete({
+                     where : {
+                          id : follow.id
+                     }
+                })
+                return "频道取关成功";
             }
 
-            await prisma.channelFollow.create({
+            if(type !== 1)
+                return "频道关注失败";
+
+            await  prisma.channelFollow.create({
                 data : {
                     id : general.generateId(),
                     userId : userId,
@@ -159,6 +168,8 @@ export class ChannelService {
                     followTime : general.time()
                 }
             })
+
+            return "频道关注成功";
             
         })
     }
@@ -173,7 +184,7 @@ export class ChannelService {
         return PrismaManager.execute(sql);
     }
 
-    async bringChannelDetailByName(channelName: string) {
+    async bringChannelDetailByName(channelName: string, userId? : number) {
         let sql = `
         select ch.*, ud."nickname", ud."avatarURL", cf."follow", ci."itemNumber" from "Community"."Channel" as ch
         LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ch."ownerId"
@@ -190,8 +201,24 @@ export class ChannelService {
         `
 
         let channelData = await PrismaManager.QueryFirst(sql);
+
+        let userFollow = await this.bringFollowStatus(channelData.id, userId);
+        channelData.userFollow = userFollow;
         channelData.typeName = ChannelType.getChannelName(channelData.type);
+
         return channelData;
+    }
+
+    async bringFollowStatus(channelId? : number, userId? : number)
+    {
+        if(!channelId || !userId)
+            return false;
+        
+        let sql = `SELECT count(*) as "followStatus" from "Community"."ChannelFollow"
+            where "userId" = ${userId} and "channelId" = ${channelId}`;
+        let followStatusRet = await PrismaManager.QueryFirst(sql);
+        console.log(followStatusRet);
+        return followStatusRet.followStatus > 0;
     }
 
     async bringChannelItemDetail(channelItemId: number) {
@@ -258,14 +285,18 @@ export class ChannelService {
         return PrismaManager.execute(sql);
     }
 
-    async bringAllChannelItem()
+    async bringAllChannelItem(keyword? : string)
     {
+        let sqlWhere = `1 = 1`;
+        keyword && (sqlWhere += ` and ci."title" ILIKE '%${keyword}%' or ci."comment" ILIKE '%${keyword}%'`);
+
         let sql = `
         select ci.*, ch."name", ch."type", ch."imgURL"  as "channelImg", ch."memo", ch."ownerId" as "channelOwnerId", 
             ud."nickname", ud."userId", ud."avatarURL"
         from "Community"."ChannelItems" as ci
                     LEFT JOIN "Community"."Channel" as ch on ch."id" = ci."channelId"
                     LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ci."ownerId"
+        where ${sqlWhere}
         order by ci."publishTime" DESC
         `
 
@@ -291,8 +322,34 @@ export class ChannelService {
         return PrismaManager.execute(sql);
     }
 
-    async followChannel(userId: number, channelId: number) {
-        return await this.channelFollow(userId, +channelId);
+    async followChannel(userId: number, channelId: number, type? : number) {
+        return await this.channelFollow(userId, +channelId, type);
+    }
+
+    async channelSearch(keywords: string) {
+        let sql = `
+        select ch.*, ud."nickname", ud."avatarURL", cf."follow", ci."itemNumber" from "Community"."Channel" as ch
+        LEFT JOIN "Community"."UserDetail" as ud on ud."userId" = ch."ownerId"
+        left join (
+        select "channelId", count("channelId") as "follow" from "Community"."ChannelFollow"
+        group by "channelId"
+        ) as cf on cf."channelId" = ch."id"
+        left join (
+        select "channelId", count("channelId") as "itemNumber" from "Community"."ChannelItems"
+        group by "channelId"
+        ) as ci on ci."channelId" = ch."id"
+        WHERE ch."name" ILIKE '%${keywords}%'
+        order by ch."createTime" DESC LIMIT 20
+        `
+
+        let channelSearch = await PrismaManager.execute(sql);
+
+        let channelItemSearch = await this.bringAllChannelItem(keywords);
+
+        return {
+            channelSearch,
+            channelItemSearch
+        }
     }
 
 }

@@ -6,7 +6,8 @@ export class SpaceType {
         104 : '学习',
         105 : '影视',
         106 : '音乐',
-        107 : "交友"
+        107 : "交友",
+        108 : "校园市场"
     }
 
     public static getSpaceTypeName(type : number)

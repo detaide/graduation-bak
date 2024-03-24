@@ -5,6 +5,7 @@ import * as m_crypto from "@/utils/crypto";
 import { saveBase64Iamge, saveImage } from '@/utils/File/upload';
 import fs from 'fs';
 import {  UserDetail } from '@prisma/client';
+import { UserIM } from './UserIM';
 
 @Injectable()
 export class UserService {
@@ -131,6 +132,8 @@ export class UserService {
                 })
             }
             
+            await this.bindRemoteIMUserSig(detailObj.nickname, userId);
+            
             return {
                 userDetail : detailObj,
                 message : "Submit Successfully"
@@ -164,6 +167,13 @@ export class UserService {
                 userId : userId
             }
         });
+
+        if(!userDetail)
+        {
+            return {
+                userId
+            };
+        }
 
         let followObj = await this.getFollowerNumber(userId);
         let retUserDetail = {
@@ -261,6 +271,44 @@ export class UserService {
         let {followerNumber} = await PrismaManager.QueryFirst(sql);
         let {followedNumber} = await PrismaManager.QueryFirst(sql2);
         return {followerNumber, followedNumber};
+    }
+
+    async bindRemoteIMUserSig(nickName : string, userId : number)
+    {
+        await new UserIM().createIMRecord(nickName, userId);
+    }
+
+    async userSearch(keyword : string)
+    {
+        let sql = `
+            SELECT * FROM "Community"."UserDetail"
+            WHERE "nickname" LIKE '%${keyword}%'
+        `
+
+        return await PrismaManager.execute(sql);
+    }
+
+    async GetUserFollower(userId : number)
+    {
+        let sql = `
+            SELECT ud.* FROM "Community"."UserDetail" as ud
+            LEFT JOIN "Community"."UserFollow" as uf on ud."userId" = uf."followerId"
+            WHERE uf."followedId" = ${userId}
+        `
+
+        return await PrismaManager.execute(sql);
+    
+    }
+
+    async GetUserFollowed(userId : number)
+    {
+        let sql = `
+            SELECT ud.* FROM "Community"."UserDetail" as ud
+            LEFT JOIN "Community"."UserFollow" as uf on ud."userId" = uf."followedId"
+            WHERE uf."followerId" = ${userId}
+        `
+
+        return await PrismaManager.execute(sql);
     }
 }
 

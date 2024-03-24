@@ -30,6 +30,6 @@ export function decryptEncryptedCookie(encryptedData: string): string {
 export function cookieExipred(cookie: string, id : number): boolean {
     console.log(cookie, id);
     let cookieInfo = JSON.parse(decryptEncryptedCookie(cookie));
-    
+
     return (cookieInfo.expireTime < new Date().getTime()) && (cookieInfo.id !== id);
 }

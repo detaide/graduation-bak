@@ -60,6 +60,7 @@ export default class PrismaManager
 
     public static async QueryFirst<T extends any | void = any> (sql : string)
     {
+        console.log("querySQL : ", sql)
         let sqlResult =  await PrismaManager.getPrisma().$queryRawUnsafe<T>(sql);
         return sqlResult instanceof Array ? sqlResult[0] : sqlResult;
     }

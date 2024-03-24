@@ -29,7 +29,7 @@ export class SpaceService {
         })
     }
 
-    async bringAllSpace(type? : number)
+    async bringAllSpace(type? : number, userId? : number)
     {
         let whereCondition = {};
         if(type && Object.keys(SpaceType.spaceType).includes(type.toString()))
@@ -39,25 +39,70 @@ export class SpaceService {
             }
         }
 
-        return PrismaManager.getPrisma().space.findMany(
-            {
-                where : whereCondition,
-                orderBy : {
-                    publishTime : 'desc'
-                }
-            }
-        );
+        let sqlWhere = ` 1=1 `;
+        type && (sqlWhere += ` and sp."type" = ${type}`);
+        userId && (sqlWhere += ` and sp."userId" = ${userId}`);
+
+        let sql = `
+            select sp.*, ud."nickname", ud."avatarURL" from "Community"."Space" as sp
+            left join "Community"."UserDetail" as ud on ud."userId" = sp."userId"
+            where ${sqlWhere}
+            order by sp."publishTime" desc
+        `
+
+        let spaceDetail = await PrismaManager.execute(sql) as unknown as Array<any>;
+        
+        spaceDetail.forEach((item) =>
+        {
+            item.typeName = SpaceType.getSpaceTypeName(item.type);
+        
+        })
+        return await spaceDetail;
+    }
+
+    async bringSpaceByFollow(userId : number)
+    {
+        let sql = `
+            select ss."updateTime", sp.*, ud."nickname", ud."avatarURL" from "Community"."SpaceStar" as ss
+            left join "Community"."Space" as sp on sp."id" = ss."spaceId"
+            left join "Community"."UserDetail" as ud on ud."userId" = ss."userId"
+            where ss."userId" = ${userId}
+            order by sp."publishTime" desc
+        `
+        let spaceDetail = await PrismaManager.execute(sql) as unknown as Array<any>;
+        
+        spaceDetail.forEach((item) =>
+        {
+            item.typeName = SpaceType.getSpaceTypeName(item.type);
+        
+        })
+        return await spaceDetail;
+        
     }
 
     async bringSpaceDetail(space_id : number)
     {
         
-        let spaceInfo = await PrismaManager.getPrisma().space.findFirst({
-            where : {
-                id : space_id
-            }
-        });
+        let sql = `
+        select sp.*, sc."spaceComment", ss."spaceStar", ss."spaceLike", ud."nickname", ud."avatarURL" from "Community"."Space" as sp
+        left join (
+            select "spaceId", count("spaceId") as "spaceComment" from "Community"."SpaceComment"
+            where "spaceId" = ${space_id}
+            group by "spaceId"
+        ) as sc on sc."spaceId" = sp."id"
+        left join (
+            select "spaceId", sum("star") as "spaceStar", sum("like") as "spaceLike" from "Community"."SpaceStar" 
+            where "spaceId" = ${space_id}
+            group by "spaceId"
+        ) as ss on ss."spaceId" = sp."id"
+        left join "Community"."UserDetail" as ud on ud."userId" = sp."userId"
+        where sp."id" = ${space_id}
+        `
+
+        let spaceInfo = await PrismaManager.QueryFirst(sql);
+
         let spaceType = SpaceType.getSpaceTypeName(spaceInfo.type);
+
         return {
             typeName : spaceType,
             ...spaceInfo
@@ -147,6 +192,92 @@ export class SpaceService {
             where : {
                 userId : userId
             }
+        })
+    }
+
+    async SpaceSearch(keyword : string)
+    {
+        let sql = `
+            select sp.*, ud."nickname", ud."avatarURL", sm."spaceCommentNumber" from "Community"."Space" as sp
+            left join "Community"."UserDetail" as ud on ud."userId" = sp."userId"
+            left join (
+                select "spaceId", count("spaceId") as "spaceCommentNumber" from "Community"."SpaceComment"
+                group by "spaceId"
+            ) as sm on sm."spaceId" = sp."id"
+            WHERE ("title" ILIKE '%${keyword}%' OR sp."info" ILIKE '%${keyword}%')
+            ORDER BY sp."publishTime" DESC
+        `
+
+        return await PrismaManager.execute(sql);
+    }
+
+    // forUser
+    async getSpaceGeneral(spaceId : number, userId : number)
+    {
+        // 个人点赞 | 个人star
+        let userSpaceGeneral = await PrismaManager.getPrisma().spaceStar.findFirst({
+            where : {
+                spaceId,
+                userId
+            }
+        });
+        return {...userSpaceGeneral};
+    }
+
+    async spaceFollow(userId : number, spaceId : number, type : "Star" | "Like", followStatus : "Add" | "Cancel")
+    {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            let spaceFollowRecord = await prisma.spaceStar.findFirst({
+                where : {
+                    userId,
+                    spaceId
+                }
+            });
+
+            if(!spaceFollowRecord && followStatus === 'Cancel')
+            {
+                throw new Error("非法操作");
+            }
+
+            if(!spaceFollowRecord && followStatus === 'Add')
+            {
+                let currentTime = general.time();
+                let newspaceFollowRecord = await prisma.spaceStar.create({
+                    data : {
+                        id : general.generateId(),
+                        userId,
+                        spaceId,
+                        star : type === "Star" ? 1 : 0,
+                        like : type === "Like" ? 1 : 0,
+                        updateTime : currentTime
+                    }
+                });
+                return ` ${type} option Successfully`;
+            }
+
+            if(spaceFollowRecord.like && type === "Like" && followStatus === "Add")
+            {
+                throw new Error("已经点赞");
+            }
+            if(spaceFollowRecord.star && type === "Star" && followStatus === "Add")
+            {
+                throw new Error("已经收藏");
+            }
+  
+            let likeType = (type === "Like") ? (followStatus === "Add" ? 1 : 0) : spaceFollowRecord.like;
+            let starType = (type === "Star") ? (followStatus === "Add" ? 1 : 0) : spaceFollowRecord.star;
+
+            await prisma.spaceStar.update({
+                where : {
+                    id : spaceFollowRecord.id
+                },
+                data : {
+                    like : likeType,
+                    star : starType
+                }
+            });
+
         })
     }
 

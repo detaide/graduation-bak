@@ -98,3 +98,12 @@ model UserFollow{
   followedId Int
   followTime Int
 }
+
+model SpaceStar{
+  id Int @id
+  userId Int
+  spaceId Int
+  star Int
+  like Int
+  updateTime Int
+}

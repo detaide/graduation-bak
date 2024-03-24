@@ -50,6 +50,10 @@ export class UserController {
         let cookie = req.cookies;
         let user_id = req.query.user_id;
         let isSelf = false;
+        if(!user_id)
+        {
+            throw new Error("user_id is empty");
+        }
 
         // try{
         //     let decryptedToken =  JSON.parse(m_crypto.decryptEncryptedCookie(cookie.token));
@@ -93,6 +97,54 @@ export class UserController {
         return this.loginService.getFollowStatus(+followedId, +followerId);
     }
 
+    @Get("remote_im")
+    async UserIM()
+    {
+        // return this.loginService.bindRemoteIMUserSig('');
+        return "demo"
+    }
+
+    @Get("check_user_cookie")
+    async UserCookieCheck(@Req() req : Request)
+    {
+        const cookie = req.cookies;
+        const userId = +(req.query.user_id as string);
+        console.log(userId, cookie);
+        if(!userId)
+            throw new Error("user Token is unAuthorized");
+
+        return !m_crypto.cookieExipred(cookie.token, userId);
+    }
+
+    @Get("search_user")
+    async UserSearch(@Req() req : Request)
+    {
+        let keywords = req.query.keywords as string;
+        if(!keywords)
+            throw new Error("No Keywords Query Provided");
+
+        return this.loginService.userSearch(keywords);
+    }
+
+    @Get("follower_user")
+    async GetUserFollower(@Req() req : Request)
+    {
+        let userId = req.query.user_id as string;
+        if(!userId)
+            throw new Error("No User Id Provided");
+
+        return this.loginService.GetUserFollower(+userId);
+    }
+
+    @Get("followed_user")
+    async GetUserFollowed(@Req() req : Request)
+    {
+        let userId = req.query.user_id as string;
+        if(!userId)
+            throw new Error("No User Id Provided");
+
+        return this.loginService.GetUserFollowed(+userId);
+    }
 }
 
 

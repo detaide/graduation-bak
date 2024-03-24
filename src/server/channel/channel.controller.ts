@@ -36,9 +36,10 @@ export class ChannelController {
     async bringChannelItemInfo(@Req() req : Request)
     {
         let channelId = parseInt(req.query.channel_id as string);
+        let keywords = req.query.keywords as string;
         if(!channelId)
             throw new Error("No Channel Id Provided");
-        return await this.channelService.bringChannelItemInfo(channelId);
+        return await this.channelService.bringChannelItemInfo(channelId, keywords);
     }
 
     @Post('create_channel_item_comment')
@@ -81,11 +82,12 @@ export class ChannelController {
     @Get('bring_channel_detail_by_name')
     async bringChannelDetailByName(@Req() req : Request){
         let channelName = req.query.channel_name as string;
+        let userId = parseInt(req.query.user_id as string);
         if(!req.query.channel_name)
             throw new Error("No Channel Name Provided");
 
         
-        return await this.channelService.bringChannelDetailByName(channelName);
+        return await this.channelService.bringChannelDetailByName(channelName, userId);
     }
 
     @Get('bring_channel_item_detail')
@@ -132,7 +134,7 @@ export class ChannelController {
     }
 
     @Post('follow_channel')
-    async followChannel(@Req() req : Request, @Body() body : {channelId : number})
+    async followChannel(@Req() req : Request, @Body() body : {channelId : number, type : number})
     {
         let userId = parseInt(req.query.user_id as string);
         if(!req.query.user_id)
@@ -141,7 +143,16 @@ export class ChannelController {
         if(!body.channelId)
             throw new Error("No Channel Id Provided");
 
-        return await this.channelService.followChannel(userId, body.channelId);
+        return await this.channelService.followChannel(userId, body.channelId, body?.type);
+    }
+
+    @Get('search_channel')
+    async channelSearch(@Req() req : Request)
+    {
+        let keyword = req.query.keyword as string;
+        if(!keyword)
+            throw new Error("keyword is empty");
+        return await this.channelService.channelSearch(keyword);
     }
 
 }
