@@ -133,5 +133,18 @@ export class SpaceController {
             throw new Error("No User Id Provided");
         return this.spaceService.spaceFollow(userId, +body.spaceId, body.type, body.followStatus);
     }
+
+    @Post("delete_space")
+    async deleteSpace(@Req() req : Request, @Body() body : {spaceId : number})
+    {
+        let userId = +req.query.user_id;
+        let spaceId = +body.spaceId;
+        if(!userId || !spaceId)
+        {
+            throw new Error("No Space Id Or UserId Provided");
+        }
+
+        return this.spaceService.deleteSpace(spaceId);
+    }
 }
  

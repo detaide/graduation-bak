@@ -118,7 +118,7 @@ export class SpaceService {
             let newSpaceComment = await prisma.spaceComment.create({
                 data : {
                     id : general.generateId(),
-                    spaceId : body.spaceId,
+                    spaceId : +body.spaceId,
                     comment : body.comment,
                     publishTime : currentTime,
                     userId : body.userId,
@@ -278,6 +278,20 @@ export class SpaceService {
                 }
             });
 
+        })
+    }
+
+    public deleteSpace(spaceId : number)
+    {
+        return PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.space.delete({
+                where : {
+                    id : spaceId
+                }
+            })
+
+            return "delete finish"
         })
     }
 
