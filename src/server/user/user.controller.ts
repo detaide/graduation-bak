@@ -1,9 +1,10 @@
-import { Body, Catch, Controller, Get, Post, Req, UseFilters } from '@nestjs/common';
+import { Body, Catch, Controller, Get, Post, Req, UseFilters, UseGuards } from '@nestjs/common';
 import { UserService, LoginType } from './user.service';
 import PrismaManager from '@/prisma';
 import { HttpExceptionFilter } from '@/http-exception.filter';
 import { Request } from 'express';
 import * as m_crypto from '@/utils/crypto';
+import { CookieAuthGuard } from '@/cookieGuard.guard';
 
 @Controller('user')
 @UseFilters(new HttpExceptionFilter())
@@ -38,6 +39,7 @@ export class UserController {
     }
 
     @Post("user_message_submit")
+    @UseGuards(CookieAuthGuard)
     userMessageSubmit(@Body() body : any, @Req() req : any)
     {
         console.log(body)
@@ -69,6 +71,7 @@ export class UserController {
     }
 
     @Post("user_follow")
+    @UseGuards(CookieAuthGuard)
     async userFollow(@Req() req : Request, @Body() body : {followedId : number})
     {
         let userId = req.query.user_id;
@@ -78,6 +81,7 @@ export class UserController {
     }
 
     @Post("user_follow_cancel")
+    @UseGuards(CookieAuthGuard)
     async userFollowCancel(@Req() req : Request, @Body() body : {followedId : number})
     {
         let userId = req.query.user_id;
@@ -127,6 +131,7 @@ export class UserController {
     }
 
     @Get("follower_user")
+    @UseGuards(CookieAuthGuard)
     async GetUserFollower(@Req() req : Request)
     {
         let userId = req.query.user_id as string;
@@ -137,6 +142,7 @@ export class UserController {
     }
 
     @Get("followed_user")
+    @UseGuards(CookieAuthGuard)
     async GetUserFollowed(@Req() req : Request)
     {
         let userId = req.query.user_id as string;

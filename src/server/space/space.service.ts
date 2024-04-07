@@ -40,14 +40,14 @@ export class SpaceService {
         }
 
         let sqlWhere = ` 1=1 `;
-        type && (sqlWhere += ` and sp."type" = ${type}`);
+        type && (type !== 100) && (sqlWhere += ` and sp."type" = ${type}`);
         userId && (sqlWhere += ` and sp."userId" = ${userId}`);
 
         let sql = `
             select sp.*, ud."nickname", ud."avatarURL" from "Community"."Space" as sp
             left join "Community"."UserDetail" as ud on ud."userId" = sp."userId"
             where ${sqlWhere}
-            order by sp."publishTime" desc
+            order by ${type === 100 ? 'sp."publishTime" DESC, sp."scanNumber" DESC' : 'sp."scanNumber" DESC, sp."publishTime" desc'}
         `
 
         let spaceDetail = await PrismaManager.execute(sql) as unknown as Array<any>;
@@ -70,11 +70,10 @@ export class SpaceService {
             order by sp."publishTime" desc
         `
         let spaceDetail = await PrismaManager.execute(sql) as unknown as Array<any>;
-        
+
         spaceDetail.forEach((item) =>
         {
             item.typeName = SpaceType.getSpaceTypeName(item.type);
-        
         })
         return await spaceDetail;
         
@@ -292,6 +291,58 @@ export class SpaceService {
             })
 
             return "delete finish"
+        })
+    }
+
+    public async deleteSpaceComment(commentId : number)
+    {
+        return PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.spaceComment.delete({
+                where : {
+                    id : commentId
+                }
+            })
+
+            return "delete finish"
+        })
+    }
+
+    public async getTodaySpace()
+    {
+        let today = general.today();
+        let sql = `
+            select sp.*, ud."nickname", ud."avatarURL" from "Community"."Space" as sp
+            left join "Community"."UserDetail" as ud on ud."userId" = sp."userId"
+            where sp."publishTime" >= '${today}'
+            order by sp."publishTime" desc
+        `
+
+        return await PrismaManager.execute(sql);
+    
+    }
+
+    public async add_scan_number(spaceId : number)
+    {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            let space = await prisma.space.findFirst({
+                where : {
+                    id : spaceId
+                }
+            });
+
+            if(!space)
+                throw new Error("space Not Found");
+
+            await prisma.space.update({
+                data : {
+                    scanNumber : space.scanNumber + 1
+                },
+                where : {
+                    id : spaceId
+                }
+            })
         })
     }
 

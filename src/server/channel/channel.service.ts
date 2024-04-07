@@ -352,6 +352,49 @@ export class ChannelService {
         }
     }
 
+    async channelHot()
+    {
+        let sql = `select *, cf."follow", ci."itemNumber" from "Community"."Channel" as ch
+        left join (
+            select "channelId", count("channelId") as "follow" from "Community"."ChannelFollow"
+            group by "channelId"
+        ) as cf on cf."channelId" = ch."id"
+        left join (
+            select "channelId", count("channelId") as "itemNumber" from "Community"."ChannelItems"
+            group by "channelId"
+        ) as ci on ci."channelId" = ch."id"
+         ORDER BY ch."scanNumber" DESC LIMIT 12`
+
+        return await PrismaManager.execute(sql);
+    }
+
+    async deleteChannelItem(channelItemId: number) {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.channelItems.delete({
+                where : {
+                    id : channelItemId
+                }
+            });
+
+            return "Delete Channel Item Successfully";
+        })
+    }
+
+    async deleteChannelComment(channelCommentId: number) {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.channelItemComment.delete({
+                where : {
+                    id : channelCommentId
+                }
+            });
+
+            return "Delete Channel Comment Successfully";
+        })
+    
+    }
+
 }
 
 

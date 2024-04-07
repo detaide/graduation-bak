@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Header, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { PublishCommentType, PublishInfoType, SpaceService } from './space.service';
 import { Request, Response, NextFunction } from 'express';
+import { CookieAuthGuard } from '@/cookieGuard.guard';
 
 @Controller('space')
 export class SpaceController {
@@ -8,7 +9,7 @@ export class SpaceController {
 
     @Post('publish')
     @Header("Access-Control-Allow-Credentials", "true")
-    
+    @UseGuards(CookieAuthGuard)
     publish(@Body() publishInfo : PublishInfoType, @Req() req : Request)
     {
         // console.log(publishInfo);
@@ -64,6 +65,7 @@ export class SpaceController {
     }
 
     @Post('publish_comment')
+    @UseGuards(CookieAuthGuard)
     async pubishComment(@Req() req : Request, @Body() body : PublishCommentType)
     {
         body.userId = parseInt(req.query.user_id as string);
@@ -120,6 +122,7 @@ export class SpaceController {
     }
 
     @Post('space_follow')
+    @UseGuards(CookieAuthGuard)
     async spaceFollow(@Req() req : Request, @Body() body : {spaceId : number, userId : number, type : "Star" | "Like", followStatus : "Add" | "Cancel"})
     {
         console.log(body)
@@ -135,6 +138,7 @@ export class SpaceController {
     }
 
     @Post("delete_space")
+    @UseGuards(CookieAuthGuard)
     async deleteSpace(@Req() req : Request, @Body() body : {spaceId : number})
     {
         let userId = +req.query.user_id;
@@ -145,6 +149,35 @@ export class SpaceController {
         }
 
         return this.spaceService.deleteSpace(spaceId);
+    }
+
+    @Post("delete_comment")
+    @UseGuards(CookieAuthGuard)
+    async deleteSpaceCommentAPI(@Req() req : Request, @Body() body : {commentId : number})
+    {
+        let userId = +req.query.user_id;
+        let commentId = +body.commentId;
+        if(!userId || !commentId)
+        {
+            throw new Error("No Comment Id Or UserId Provided");
+        }
+
+        return this.spaceService.deleteSpaceComment(commentId);
+    }
+
+    @Get("today_space")
+    async getTodaySpace()
+    {
+        return this.spaceService.getTodaySpace();
+    }
+
+    @Get("add_scan_number")
+    add_scan_number(@Req() req : Request)
+    {
+        let spaceId = +req.query.space_id;
+        if(!spaceId)
+            throw new Error("No Space Id Provided");
+        return this.spaceService.add_scan_number(spaceId);
     }
 }
  

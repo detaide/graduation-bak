@@ -115,13 +115,13 @@ export class UserService {
                 id : userDetail?.id || general.generateId()
             }
 
-            console.log(detailObj)
-
             if(!userDetail)
             {
                 await prisma.userDetail.create({
                     data : detailObj
-                })
+                });
+
+                await this.bindRemoteIMUserSig(detailObj.nickname, userId);
             }
             else{
                 await prisma.userDetail.update({
@@ -131,8 +131,6 @@ export class UserService {
                     }
                 })
             }
-            
-            await this.bindRemoteIMUserSig(detailObj.nickname, userId);
             
             return {
                 userDetail : detailObj,
@@ -243,6 +241,7 @@ export class UserService {
 
     async getFollowStatus(followedId : number, followerId : number)
     {
+        
         let followRecord = await PrismaManager.getPrisma().userFollow.findFirst({
             where : {
                 followedId,

@@ -1,12 +1,14 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ChannelItemCommentReq, ChannelItemReq, ChannelRes, ChannelService } from './channel.service';
 import { Request } from 'express';
+import { CookieAuthGuard } from '@/cookieGuard.guard';
 
 @Controller('channel')
 export class ChannelController {
     constructor(private readonly channelService : ChannelService) {}
 
     @Post('create_channel')
+    @UseGuards(CookieAuthGuard)
     async createChannel(@Body() body : ChannelRes, @Req() req : Request)
     {
         let userId = parseInt(req.query.user_id as string);
@@ -23,6 +25,7 @@ export class ChannelController {
     }
 
     @Post('create_channel_item')
+    @UseGuards(CookieAuthGuard)
     async createChannelItem(@Req() req : Request, @Body() body : ChannelItemReq)
     {
         let userId = parseInt(req.query.user_id as string);
@@ -43,6 +46,7 @@ export class ChannelController {
     }
 
     @Post('create_channel_item_comment')
+    @UseGuards(CookieAuthGuard)
     async createChannelItemComment(@Req() req : Request, @Body() body : ChannelItemCommentReq)
     {
         let userId = parseInt(req.query.user_id as string);
@@ -59,6 +63,7 @@ export class ChannelController {
     }
 
     @Get('channel_follow')
+    @UseGuards(CookieAuthGuard)
     async channelFollow(@Req() req : Request)
     {
         let userId = parseInt(req.query.user_id as string);
@@ -70,6 +75,7 @@ export class ChannelController {
     }
 
     @Get('channel_follow_by_user_id')
+    @UseGuards(CookieAuthGuard)
     async getChannelFollowByUserId(@Req() req : Request)
     {
         let userId = parseInt(req.query.user_id as string);
@@ -134,6 +140,7 @@ export class ChannelController {
     }
 
     @Post('follow_channel')
+    @UseGuards(CookieAuthGuard)
     async followChannel(@Req() req : Request, @Body() body : {channelId : number, type : number})
     {
         let userId = parseInt(req.query.user_id as string);
@@ -153,6 +160,32 @@ export class ChannelController {
         if(!keyword)
             throw new Error("keyword is empty");
         return await this.channelService.channelSearch(keyword);
+    }
+
+    @Get('channel_hot')
+    async channelHot(@Req() req : Request)
+    {
+        return await this.channelService.channelHot();
+    }
+
+    @Post('delete_channel_item')
+    @UseGuards(CookieAuthGuard)
+    async deleteChannelItemAPI(@Req() req : Request, @Body() body : {channelItemId : number})
+    {
+        let userId = parseInt(req.query.user_id as string);
+        if(!userId)
+            throw new Error("No User Id Provided");
+        return await this.channelService.deleteChannelItem(+body.channelItemId);
+    }
+
+    @Post('delete_channel_item_comment')
+    @UseGuards(CookieAuthGuard)
+    async deleteChannelCommentAPI(@Req() req : Request, @Body() body : {channelCommentId : number})
+    {
+        let userId = parseInt(req.query.user_id as string);
+        if(!userId)
+            throw new Error("No User Id Provided");
+        return await this.channelService.deleteChannelComment(+body.channelCommentId);
     }
 
 }

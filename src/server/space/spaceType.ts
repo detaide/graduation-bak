@@ -1,5 +1,6 @@
 export class SpaceType {
     public static spaceType = {
+        100 : '最新动态',
         101 : "校园动态",
         102 : "心情",
         103 : "游戏",
