@@ -6,11 +6,56 @@ import { saveBase64Iamge, saveImage } from '@/utils/File/upload';
 import fs from 'fs';
 import {  UserDetail } from '@prisma/client';
 import { UserIM } from './UserIM';
+import { Email } from '@/utils/mail/email';
 
 @Injectable()
 export class UserService {
 
+    private mailResigerMap : {
+        [email : string] : {
+            registerTime : number,
+            code? : string
+        }
+    }
 
+    private expireTime = 15 * 60;
+    private clearRange = 10 * 1000;
+
+    private clearResigerTimer = null;
+
+    public constructor()
+    {
+        this.mailResigerMap = {};
+        this.clearMailResigerRecord();
+    }
+
+    public clearMailResigerRecord()
+    {
+        this.clearResigerTimer = setInterval(() => {
+            for(let key in this.mailResigerMap)
+            {
+                let record = this.mailResigerMap[key];
+                if((general.time() - record.registerTime) > this.expireTime)
+                {
+                    delete this.mailResigerMap[key];
+                }
+            }  
+        }, this.clearRange);
+    }
+
+
+    public findEmailRecord(email : string)
+    {
+        for(let key in this.mailResigerMap)
+        {
+            if(key === email && (general.time() - this.mailResigerMap[key].registerTime) < this.expireTime)
+            {
+                return this.mailResigerMap[key];
+            }
+        }
+
+        return null;
+    }
 
     async register(loginInfo : LoginType)
     {
@@ -308,6 +353,127 @@ export class UserService {
         `
 
         return await PrismaManager.execute(sql);
+    }
+
+    async MailRegister(emailReqeust : string)
+    {
+
+        if(!emailReqeust)
+        {
+            throw new Error("无效的邮箱");
+        }
+
+        if(this.findEmailRecord(emailReqeust))
+        {
+            return "已经发送过验证码，请稍后再试";
+        }
+
+        const email = new Email();
+        const code = Math.random().toString().slice(-6);
+
+        this.mailResigerMap[emailReqeust] = {
+            registerTime : general.time(),
+            code
+        };
+
+        await email.send({
+            email : emailReqeust,
+            subject : "测试注册",
+            code : code,
+            html : "登录验证码为{{code}}，请不要向他人泄露。"
+        })
+    }
+
+    async MailLogin(email, code)
+    {
+        let emailRecord = null;
+        for(let key in this.mailResigerMap)
+        {
+            if(email === key && (general.time() - this.mailResigerMap[key].registerTime) < this.expireTime)
+            {
+                emailRecord = this.mailResigerMap[key];
+            }
+        }
+
+        if(!emailRecord || (emailRecord?.code !== code))
+        {
+            throw new Error("验证码错误");
+        }
+
+        delete this.mailResigerMap[email];
+
+        let userRecord = await PrismaManager.getPrisma().login.findFirst({
+            where : {
+                username : email
+            }
+        });
+
+
+        if(userRecord)
+        {
+            return await PrismaManager.transaction(async (prisma) =>
+            {
+                await prisma.login.update({
+                    data : {
+                        loginTime : general.time()
+                    },
+                    where : {
+                        id : userRecord.id
+                    }
+                })
+    
+                let encryptedCookie = m_crypto.generateCookie(userRecord.id);
+                let userDetail = await this.bringUserDetail(userRecord.id);
+                return {
+                    cookie : encryptedCookie,
+                    id : userRecord.id,
+                    username : userRecord.username,
+                    userDetail
+                }
+            })
+        }
+
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            let userRecord = await prisma.login.create({
+                data : {
+                    id : general.generateId(),
+                    username : email,
+                    password : general.randomPassword(),
+                    registerTime : general.time()
+                }
+            });
+
+            let detailObj : UserDetail = {
+                userId : userRecord.id,
+                avatarURL : '',
+                nickname : userRecord.username,
+                description : '',
+                address : '',
+                firstName : '',
+                lastName : '',
+                school : '',
+                gender : 0,
+                birthday : 0,
+                email : userRecord.username,
+                id : general.generateId()
+            }
+
+            let userDetail = await prisma.userDetail.create({
+                data : detailObj
+            })
+
+            let encryptedCookie = m_crypto.generateCookie(userRecord.id);
+
+
+            return {
+                cookie : encryptedCookie,
+                id : userRecord.id,
+                username : userRecord.username,
+                userDetail
+            }
+        })
+
     }
 }
 

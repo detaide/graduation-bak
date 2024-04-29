@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import sha256 from "crypto-js/sha256";
 
 const Expire_Time = 4 * 60 * 60 * 1000;
 const secretKey = 'ptu_cs_graduation';
@@ -32,4 +33,11 @@ export function cookieExipred(cookie: string, id : number): boolean {
     let cookieInfo = JSON.parse(decryptEncryptedCookie(cookie));
 
     return (cookieInfo.expireTime < new Date().getTime()) && (cookieInfo.id !== id);
+}
+
+
+export function encrypted(text : string)
+{
+    let sha256Text = sha256(text);
+    return sha256Text.toString();
 }

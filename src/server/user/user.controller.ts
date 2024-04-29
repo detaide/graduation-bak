@@ -151,6 +151,24 @@ export class UserController {
 
         return this.loginService.GetUserFollowed(+userId);
     }
+
+    @Get("mail_code")
+    async MailRegister(@Req() req : Request)
+    {
+        let email = req.query.email as string;
+
+        return this.loginService.MailRegister(email);
+    }
+
+    @Get("mail_login")
+    async MailLogin(@Req() req : Request)
+    {
+        let email = req.query.email as string;
+
+        let code = req.query.code as string;
+
+        return this.loginService.MailLogin(email, code);
+    }
 }
 
 

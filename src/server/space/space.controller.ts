@@ -56,7 +56,7 @@ export class SpaceController {
         let spaceId = req.query.space_id;
         if(!spaceId)
         {
-            throw new Error("user_id is empty");
+            throw new Error("space_id is empty");
         }
         let ret = await this.spaceService.bringSpaceDetail(+spaceId);
         return {
