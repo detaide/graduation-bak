@@ -179,5 +179,25 @@ export class SpaceController {
             throw new Error("No Space Id Provided");
         return this.spaceService.add_scan_number(spaceId);
     }
+
+    @Get("space_message")
+    @UseGuards(CookieAuthGuard)
+    bringSpaceCommentMessage(@Req() req : Request)
+    {
+        let user_id = +req.query.user_id;
+        if(!user_id)
+            throw new Error("No User Id Provided");
+        return this.spaceService.bringSpaceCommentMessage(user_id);
+    }
+
+    @Get("space_message_check")
+    spaceMessageCheck(@Req() req : Request)
+    {
+        let user_id = +req.query.user_id;
+        let space_id = +req.query.space_id;
+        if(!user_id || !space_id)
+            throw new Error("No User Id Or Space Id Provided");
+        return this.spaceService.spaceMessageCheck(space_id);
+    }
 }
  

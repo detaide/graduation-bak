@@ -53,6 +53,7 @@ model SpaceComment{
   comment String
   publishTime Int
   thumbs Int?
+  read Int?
 }
 
 model Channel{
@@ -83,6 +84,7 @@ model ChannelItemComment{
   comment String
   publishTime Int
   thumbs Int?
+  read Int?
 }
 
 model ChannelFollow{

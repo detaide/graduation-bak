@@ -395,6 +395,37 @@ export class ChannelService {
     
     }
 
+    async bringChannelCommentMessage(userId : number)
+    {
+        let sql = `
+            select 
+                cic."userId" as "commentUserId", cic."publishTime", cic."channelItemId", cic."comment",
+                cic."read", ci."ownerId", ci."title", ud."nickname", ud."avatarURL"
+            from "Community"."ChannelItemComment" as cic
+            left join "Community"."ChannelItems" as ci on ci."id" = cic."channelItemId"
+            left join "Community"."UserDetail" as ud on cic."userId" = ud."userId"
+            where ci."ownerId" = ${userId} and cic."userId" <> ${userId}
+            order by cic."read" asc, cic."publishTime" desc
+        `;
+
+        return await PrismaManager.execute(sql);
+    }
+
+    async channelMessageCheck(channelItemId : number)
+    {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.channelItemComment.updateMany({
+                data : {
+                    read : 1
+                },
+                where : {
+                    channelItemId
+                }
+            })
+        })
+    }
+
 }
 
 

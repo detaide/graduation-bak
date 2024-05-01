@@ -188,4 +188,24 @@ export class ChannelController {
         return await this.channelService.deleteChannelComment(+body.channelCommentId);
     }
 
+    @Get("channel_message")
+    @UseGuards(CookieAuthGuard)
+    bringSpaceCommentMessage(@Req() req : Request)
+    {
+        let user_id = +req.query.user_id;
+        if(!user_id)
+            throw new Error("No User Id Provided");
+        return this.channelService.bringChannelCommentMessage(user_id);
+    }
+
+    @Get("channel_message_check")
+    channelMessageCheck(@Req() req : Request)
+    {
+        let user_id = +req.query.user_id;
+        let channel_id = +req.query.channel_id;
+        if(!user_id || !channel_id)
+            throw new Error("No User Id Or Channel Id Provided");
+        return this.channelService.channelMessageCheck(channel_id);
+    }
+
 }

@@ -121,7 +121,8 @@ export class SpaceService {
                     comment : body.comment,
                     publishTime : currentTime,
                     userId : body.userId,
-                    thumbs : 0
+                    thumbs : 0,
+                    read : 0
                 }
             });
             
@@ -341,6 +342,38 @@ export class SpaceService {
                 },
                 where : {
                     id : spaceId
+                }
+            })
+        })
+    }
+
+    async bringSpaceCommentMessage(userId : number)
+    {
+        let sql = `
+            select 
+                sp."userId" as "ownderId", sc."spaceId", sc."userId" as "commentUserId",
+                sc."publishTime", ud."nickname", ud."avatarURL", sc."read", sc."comment",
+                sp."title", sp."info"
+            from "Community"."SpaceComment" as sc
+            left join "Community"."Space" as sp on sp."id" = sc."spaceId"
+            left join "Community"."UserDetail" as ud on  ud."userId" = sc."userId"
+            where sp."userId" = ${userId} and sc."userId" <> ${userId}
+            order by sc."read" asc, sc."publishTime" desc
+        `;
+
+        return await PrismaManager.execute(sql);
+    }
+
+    async spaceMessageCheck(spaceId : number)
+    {
+        return await PrismaManager.transaction(async (prisma) =>
+        {
+            await prisma.spaceComment.updateMany({
+                data : {
+                    read : 1
+                },
+                where : {
+                    spaceId
                 }
             })
         })
